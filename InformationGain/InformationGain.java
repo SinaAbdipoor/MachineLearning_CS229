@@ -1,4 +1,4 @@
-package machinelearning;
+package id3;
 
 import java.util.ArrayList;
 
@@ -6,86 +6,67 @@ import java.util.ArrayList;
  *
  * @author sinaa
  */
-final class InformationGain {
+class InformationGain {
 
-    static double calculateInformationGain(String[] attribute,
-            boolean[] targetAttribute) {
-        System.out.println("---------------------------------------------------"
-                + "----------------------------------------------------------");
-        System.out.println("Calculating Information Gain...");
-        //Step 1: finding the different values of the attribute
-        ArrayList<String> attributeValues = new ArrayList<>();
-        for (String a : attribute) {
-            if (!attributeValues.contains(a)) {
-                attributeValues.add(a);
-            }
-        }
-
-        //Step 2: finding frequency of the different values
-        int[] valuesFrequencies = new int[attributeValues.size()];
-        for (String a : attribute) {
-            valuesFrequencies[attributeValues.indexOf(a)]++;
-        }
-
-        //Step 3: calculating the information gain
-        System.out.println("\nEntropy(S): ");
-        double s = calculateEntropy(targetAttribute);
-        System.out.println("\nDifferent values of this attribute:");
-        double v = 0;
-        for (int i = 0; i < valuesFrequencies.length; i++) {
-            System.out.println(attributeValues.get(i) + ":");
-            v += ((double) valuesFrequencies[i] / (double) attribute.length)
-                    * calculateEntropy(attribute, attributeValues.get(i),
-                            targetAttribute);
-        }
-        double informationGain = s - v;
-
-        //print info
-        System.out.println("\nEntropy(S) = " + s);
-        System.out.println("Entropy(S, V) = Σ|Sv|/|S|" + " Entropy(Sv) = " + v);
-        System.out.println("Information Gain(S, V) = Entropy(S) - Entropy(S, V)"
-                + " = " + informationGain);
-        System.out.println("---------------------------------------------------"
-                + "----------------------------------------------------------");
-        return informationGain;
+    static double log2(double input) {
+        return Math.log(input) / Math.log(2);
     }
 
-    static double calculateEntropy(boolean[] targetAttribute) {
-        int positiveCount = 0, negativeCount = 0;
-        for (boolean a : targetAttribute) {
-            if (a) {
-                positiveCount++;
-            } else {
-                negativeCount++;
-            }
+    static double entropy(int positiveCount, int negativeCount) {
+        double p = positiveCount, n = negativeCount, total = p + n;
+        //If p or n is zero -> entropy will be zero
+        if (p == 0 || n == 0) {
+            return 0;
         }
-        return getEntropy(positiveCount, negativeCount);
+        return -(p / total) * log2(p / total) - (n / total) * log2(n / total);
     }
 
-    static double calculateEntropy(String[] attribute, String attributeValue,
-            boolean[] targetAttributes) {
+    static double calcEntropy(ArrayList<Boolean> targetAttribute,
+            ArrayList<String> attribute, String value) {
         int positiveCount = 0, negativeCount = 0;
-        for (int i = 0; i < attribute.length; i++) {
-            if (attribute[i].equals(attributeValue)) {
-                if (targetAttributes[i]) {
+        for (int i = 0; i < attribute.size(); i++) {
+            if (attribute.get(i).equals(value)) {
+                if (targetAttribute.get(i)) {
                     positiveCount++;
                 } else {
                     negativeCount++;
                 }
             }
         }
-        return getEntropy(positiveCount, negativeCount);
+        return entropy(positiveCount, negativeCount);
     }
 
-    static double getEntropy(int positiveCount, int negativeCount) {
-        System.out.println(positiveCount + " +");
-        System.out.println(negativeCount + " -");
-        double p = positiveCount, n = negativeCount, total = p + n;
-        return -((p / total) * log2(p / total))
-                - ((n / total) * log2(n / total));
-    }
-
-    static double log2(double input) {
-        return Math.log(input) / Math.log(2);
+    static double informationGain(ArrayList<Boolean> targetAttribute,
+            ArrayList<String> attribute) {
+        //Gain(S,A) = Entropy(S) - ∑(Sv/S)Entropy(Sv)
+        //Step 1: Calculating Entropy(S)
+        int positiveCount = 0, negativeCount = 0;
+        for (boolean bool : targetAttribute) {
+            if (bool) {
+                positiveCount++;
+            } else {
+                negativeCount++;
+            }
+        }
+        double s = entropy(positiveCount, negativeCount);
+        //Step 2: Calculating ∑(Sv/S)Entropy(Sv)
+        //Step 2.1: Getting the different values(v) of "attribute"
+        ArrayList<String> v = new ArrayList<>();
+        ArrayList<Integer> count = new ArrayList<>();
+        for (String str : attribute) {
+            if (!v.contains(str)) {
+                v.add(str);
+                count.add(1);
+            } else {    //Adding 1 to the count
+                count.set(v.indexOf(str), count.get(v.indexOf(str)) + 1);
+            }
+        }
+        //Step 2.2: ∑(Sv/S)Entropy(Sv)
+        double a = 0;
+        for (int i = 0; i < v.size(); i++) {
+            double prop = (double) count.get(i) / (double) attribute.size();
+            a += (prop * calcEntropy(targetAttribute, attribute, v.get(i)));
+        }
+        return s - a;
     }
 }
